@@ -1,0 +1,71 @@
+project_name: "smollm-distil"
+dataset:
+  name: "Trelis/smollm-corpus-2percent"
+  total_train_samples: 1000000 # 1M rows for ~0.4% of the pre-training data. 4582000 is 2% of total data.
+  eval_samples: 1000
+  subsets:
+    - name: "cosmopedia"
+      split: "train"
+    - name: "fineweb_chunk_0"
+      split: "train"
+    - name: "fineweb_chunk_1"
+      split: "train"
+    # - name: "fineweb_chunk_2"
+    #   split: "train"
+    # - name: "fineweb_chunk_3"
+    #   split: "train"
+    # - name: "fineweb_chunk_4"
+    #   split: "train"
+    # - name: "fineweb_chunk_5"
+    #   split: "train"
+    # - name: "fineweb_chunk_6"
+    #   split: "train"
+    # - name: "fineweb_chunk_7"
+    #   split: "train"
+models:
+  teacher: "HuggingFaceTB/SmolLM-135M"
+  student: "SmolLM-135M-Instruct-layer-pruned-95M-raw"
+tokenizer: 
+  max_length: 1024
+  chat_template: "{% for message in messages %}{{'<|im_start|>' + message['role'] + '\n' + message['content'] + '<|im_end|>' + '\n'}}{% endfor %}{% if add_generation_prompt %}{{ '<|im_start|>assistant\n' }}{% endif %}"
+training:
+  output_dir: "./results"
+  per_device_train_batch_size: 4
+  per_device_eval_batch_size: 4
+  gradient_accumulation_steps: 1
+  save_strategy: "steps"
+  eval_strategy: "steps"
+  # load_best_model_at_end: false
+  # metric_for_best_model: "eval_loss"
+  greater_is_better: false
+  learning_rate: 0.001
+  weight_decay: 0.05
+  warmup_ratio: 0.01  # This will be used to calculate warmup_steps
+  resume_from_checkpoint: null
+  fp16: false
+  bf16: true
+  report_to: "tensorboard"
+  gradient_checkpointing: false # if set to false then computation time decreases while memory usage increases
+  gradient_checkpointing_kwargs: {"use_reentrant": True}
+  hub_model_id: "dhruvsandhu/distilled-smollm-135m-95m"
+training_aux:
+  save_steps_fraction: 0.2  # This will be multiplied by max_steps in the script
+  logging_steps_fraction: 0.001  # This will be multiplied by max_steps in the script
+  eval_steps_fraction: 0.2  # This will be multiplied by max_steps in the script
+  num_train_epochs: 1
+  annealing_phase_fraction: 0.1
+distillation:
+  temperature: 2.0
+  alpha: 0.9
+  forward_kl_weight: 1.0
+  reverse_kl_weight: 0
+  jsd_weight: 0
+  akl_weight: 0
+  dpkd_weight: 0
+model_config:
+  use_flash_attention: false
+wandb:
+  wandb_project: "distillation"
+  wandb_entity: "dhruvsandhu-iit-bhubaneswar"
+huggingface:
+  push_to_hub: true
