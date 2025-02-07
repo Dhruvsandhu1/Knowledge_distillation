@@ -198,6 +198,19 @@ class DistillationTrainer(SFTTrainer):
         # Scale the KL divergence by the temperature and max sequence length
         return kl_div * (temperature ** 2) / self.config["tokenizer"]["max_length"]
     
+    def backward_kl_divergence(self, student_logits, teacher_logits):
+        temperature = self.config["distillation"]["temperature"]
+
+        # Compute softmax for both student and teacher logits
+        student_probs = F.softmax(student_logits / temperature, dim=-1)
+        teacher_log_probs = F.log_softmax(teacher_logits / temperature, dim=-1)
+
+        # Compute the KL divergence (teacher || student)
+        kl_div = F.kl_div(teacher_log_probs, student_probs, reduction='batchmean', log_target=False)
+
+        # Scale the KL divergence by temperature squared and max sequence length
+        return kl_div * (temperature ** 2) / self.config["tokenizer"]["max_length"]
+    
     def evaluation_loop(self, dataloader, description, prediction_loss_only=None, ignore_keys=None, metric_key_prefix="eval"):
         output = super().evaluation_loop(dataloader, description, prediction_loss_only, ignore_keys, metric_key_prefix)
         
